@@ -11,6 +11,11 @@ namespace NoteMovementFix.Patches
     {
         static bool Prefix(ref NoteFloorMovement __instance, ref Vector3 __result)
         {
+            if (!Plugin.AllowedToPatch)
+            {
+                return true;
+            }
+            
             // Skip floor movement if disabled
             if (Config.Instance.Enabled && !Plugin.InReplay && Config.Instance.HiddenFloorMovement)
             {
@@ -40,6 +45,11 @@ namespace NoteMovementFix.Patches
             ref Action ___noteJumpDidPassMissedMarkerEvent, ref Action<NoteJump> ___noteJumpDidPassThreeQuartersEvent, ref Action ___noteJumpDidPassHalfEvent,
             ref Action<float> ___noteJumpDidUpdateProgressEvent)
         {
+            if (!Plugin.AllowedToPatch)
+            {
+                return true;
+            }
+            
             if (Config.Instance.Enabled && !Plugin.InReplay)
             {
                 if (!__instance._missedMarkReported)
@@ -233,6 +243,11 @@ namespace NoteMovementFix.Patches
     {
         static void Prefix(ref NoteFloorMovement __instance)
         {
+            if (!Plugin.AllowedToPatch)
+            {
+                return;
+            }
+            
             if (Config.Instance.Enabled && Config.Instance.FakeGhostMode && Config.Instance.FakeGhostNote)
             {
                 var p = __instance._rotatedObject.parent;
@@ -244,18 +259,24 @@ namespace NoteMovementFix.Patches
         }
     }
 
-    [HarmonyPatch(typeof(GameplayCoreInstaller), nameof(GameplayCoreInstaller.InstallBindings))]
-    static class DisableNE
+    [HarmonyPatch]
+    internal static class DisableNE
     {
-        static void Postfix(ref GameplayCoreInstaller __instance)
+        [HarmonyPatch(typeof(LevelScenesTransitionSetupDataSO),
+            nameof(LevelScenesTransitionSetupDataSO.BeforeScenesWillBeActivated))]
+        [HarmonyPatch(typeof(LevelScenesTransitionSetupDataSO),
+            nameof(LevelScenesTransitionSetupDataSO.BeforeScenesWillBeActivatedAsync))]
+        [HarmonyPostfix]
+        private static void LevelScenesTransitionSetupDataSO_BeforeScenesWillBeActivated(LevelScenesTransitionSetupDataSO __instance)
         {
-            var key = (BeatmapKey)__instance._sceneSetupData?.beatmapKey;
+            BeatmapKey? key = __instance.gameplayCoreSceneSetupData?.beatmapKey;
             if (key != null)
             {
-                var hasRequirement = SongCore.Collections.GetCustomLevelSongDifficultyData(key)?
-                .additionalDifficultyData?
-                ._requirements?.Any(x => x == "Noodle Extensions" || x == "Mapping Extensions") == true;
-                if (hasRequirement) Config.Instance.Enabled = false;
+                bool hasRequirement = SongCore.Collections.GetCustomLevelSongDifficultyData(key.Value)?
+                    .additionalDifficultyData
+                    ._requirements.Any(x => x == "Noodle Extensions" || x == "Mapping Extensions") == true;
+                
+                Plugin.AllowedToPatch = !hasRequirement;
             }
         }
     }

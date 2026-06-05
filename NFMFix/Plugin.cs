@@ -19,6 +19,7 @@ namespace NoteMovementFix
 		internal static Harmony harmony;
 		internal static bool InReplay = false;
 		internal static bool Submission = true;
+		internal static bool AllowedToPatch = true;
 
 		static class BsmlWrapper
 		{
